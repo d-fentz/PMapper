@@ -527,7 +527,16 @@ def _get_ipaddress_match(block: str, policy_key: str, policy_value: Union[str, L
     if_exists_op = 'IfExists' in block
 
     for value in _listify_string(policy_value):
-        value_net = ipaddress.ip_network(value)
+        try:
+            value_net = ipaddress.ip_network(value)
+        except ValueError as e:
+            if 'has host bits set' in str(e):
+                ip_str, prefix_length = value.split('/')
+                ip_obj = ipaddress.ip_address(ip_str)
+                corrected_value_net = ipaddress.ip_network(f"{ip_obj}/{prefix_length}", strict=False)
+                value_net = corrected_value_net
+            else:
+                raise
         if block == 'IpAddress':
             if policy_key not in context:
                 return if_exists_op
